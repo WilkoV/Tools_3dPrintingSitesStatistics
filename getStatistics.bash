@@ -10,17 +10,14 @@ else
 	mkdir -p config
 	(echo "thingInputFile=\"config/thingiverse.items\""
 	 echo "thingApiToken=\"ENTER_YOUR_THINGIVERSE_APP_TOKEN_HERE\""
-	 echo "cultsProfileUrl=\"https://cults3d.com/en/users/ENTER_YOUR_USERNAME_HERE/creations\""
+	 echo "cultsInputFile=\"cults.items\""
 	 echo "resultFile=\"results/statistics.csv\"") > config/3dStatistics.ini
 
 	chmod +x config/3dStatistics.ini
 
-	echo "Please configure thingApiToken and cultsProfileUrl in config/3dStatistics.ini"
-
-	(echo "https://www.thingiverse.com/thing:1234567"
-	 echo "https://www.thingiverse.com/thing:7654321") > config/thingiverse.items
-
+	echo "Please configure thingApiToken config/3dStatistics.ini"
 	echo "Please add your things to the config/thingiverse.items file"
+	echo "Please add your things to the config/cults.items file"
 
 	if [ ! -d tmp ]; then
 		mkdir tmp
@@ -145,21 +142,65 @@ function getThingiverseStatistics {
 	done
 }
 
+function downloadFilesFromCults {
+	#
+	local tmpInut="tmp/cults.tmpInput"
+	cp ${1} ${tmpInut}
+	rm ${cultsError} > /dev/null 2>&1
+
+	# iterate over input file
+	for currentUrl in `sort -u ${tmpInut}`; do
+		# get cults id from URL
+		cultsId=`echo $currentUrl | cut -d'/' -f7`
+
+		# get cults details from API
+		# wgetResult=`wget -O ${cultsTmpFile} -t 50 -T 120 "https://api.thingiverse.com/things/${thingId}?access_token=${thingApiToken}" 2>&1 | grep "200 OK"`
+		
+		wgetResult=`wget -O ${cultsTmpFile} -t 50 -T 120 $currentUrl 2>&1 | grep "200 OK"`
+
+		printf "      %-70s" $cultsId
+		
+		if [ ! "X${wgetResult}" == "X" ]; then
+			numberOfDownloads=`grep likes ${cultsTmpFile} | grep count | grep downloads | grep -o -P '(?<=downloads&quot;:{&quot;count&quot;:).*(?=,&quot;min&quot;)'`
+
+			cultsTotalDownloads=$((cultsTotalDownloads + $numberOfDownloads))
+
+			printf "(%5s): %s\n" $numberOfDownloads "OK"
+		else
+			printf "(%5s): %s\n" "???" "OK"
+			
+			echo ${currentUrl} >> ${cultsError}
+		fi
+	done
+}
+
 #
 # getCultsStatistics: Get statistics from Cults3d
 #
 function getCultsStatistics {
+	# input file
+	cultsTmpInputFile=${cultsInputFile}
+
+	# cumulative number of downloads
+	cultsTotalDownloads=0
+	cultsTotalViews=0
 
 	# print inital header
 	echo "--------------------------------------------------------------------------------"
-	echo "    Cults3d: "
-	printf "      Getting data ... "
+	echo "   Cults3d:"
 
-	wget -O $cultsTmpFile -o $cultsLogFile ${cultsProfileUrl}
+	# loop until no error file is available
+	while : ; do
+		downloadFilesFromCults ${cultsTmpInputFile}
 
-	cultsTotalDownloads=`awk "/Downloads/ {getline;print}" $cultsTmpFile`
-
-	echo "done"
+		if [ -f ${cultsError} ]; then
+			echo "--------------------------------------------------------------------------------"
+			echo "   Retrying errors"
+			cultsTmpInputFile=${cultsError}
+		else
+			break
+		fi
+	done
 }
 
 #
@@ -185,7 +226,8 @@ function writeResults {
 }
 
 getPrusaStatistics
-getThingiverseStatistics
 getCultsStatistics
+getThingiverseStatistics
 
 writeResults
+
