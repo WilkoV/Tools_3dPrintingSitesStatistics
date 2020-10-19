@@ -204,9 +204,9 @@ function writeResults {
 	echo "${today},${thingTotalDownloads},${cultsTotalDownloads},${prusaTotalDownloads}" >> ${resultFile}
 }
 
-#getPrusaStatistics
+getPrusaStatistics
 getCultsStatistics
-#getThingiverseStatistics
+getThingiverseStatistics
 
 #writeResults
 
