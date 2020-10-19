@@ -60,26 +60,8 @@ prusaTotalDownloads=0
 # check current files and directories
 if [ ! -d tmp ]; then
 	mkdir tmp
-fi
-
-if [ -f ${thingTmpFile} ]; then
-	rm ${thingTmpFile}
-fi
-
-if [ -f ${thingProcessingFile} ]; then
-	rm ${thingProcessingFile}
-fi
-
-if [ -f ${cultsTmpFile} ]; then
-	rm ${cultsTmpFile}
-fi
-
-if [ -f ${cultsLogFile} ]; then
-	rm ${cultsLogFile}
-fi
-
-if [ -f ${cultsProcessingFile} ]; then
-	rm ${cultsProcessingFile}
+else
+	rm tmp/*
 fi
 
 #
@@ -154,15 +136,12 @@ function downloadFilesFromCults {
 		cultsId=`echo $currentUrl | cut -d'/' -f7`
 
 		# get cults details from API
-		# wgetResult=`wget -O ${cultsTmpFile} -t 50 -T 120 "https://api.thingiverse.com/things/${thingId}?access_token=${thingApiToken}" 2>&1 | grep "200 OK"`
-		
 		wgetResult=`wget -O ${cultsTmpFile} -t 50 -T 120 $currentUrl 2>&1 | grep "200 OK"`
 
 		printf "      %-70s" $cultsId
 		
 		if [ ! "X${wgetResult}" == "X" ]; then
-			numberOfDownloads=`grep likes ${cultsTmpFile} | grep count | grep downloads | grep -o -P '(?<=downloads&quot;:{&quot;count&quot;:).*(?=,&quot;min&quot;)'`
-
+			numberOfDownloads=`python3 ./extractNumberOfDownloadsFromCults.py ${cultsTmpFile}`
 			cultsTotalDownloads=$((cultsTotalDownloads + $numberOfDownloads))
 
 			printf "(%5s): %s\n" $numberOfDownloads "OK"
