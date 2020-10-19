@@ -208,5 +208,5 @@ getPrusaStatistics
 getCultsStatistics
 getThingiverseStatistics
 
-#writeResults
+writeResults
 
